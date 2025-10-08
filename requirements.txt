@@ -1,0 +1,7 @@
+boto3
+pandas
+pytest
+moto
+bandit
+black
+flake8
