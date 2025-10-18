@@ -30,7 +30,7 @@ def obfuscate_fields(df: pd.DataFrame, fields_to_obfuscate: List[str]) -> pd.Dat
             logger.warning("Field '%s' not found in DataFrame; skipping.", field)
             continue
 
-        # Replace non-null values with mask; preserve NaN
+        # Replace non-null value with mask; preserve NaN
         # Use vectorized .where to avoid Python loops
         series = df_copy[field]
         df_copy[field] = series.where(series.isna(), MASK_VALUE)

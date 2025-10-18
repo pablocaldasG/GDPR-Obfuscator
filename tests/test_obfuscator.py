@@ -67,7 +67,7 @@ def test_obfuscate_missing_field_warns_and_leaves_df_unchanged(caplog, sample_df
 
     assert df_output.equals(sample_df)
 
-    # Log message should warn but not include PII
+    # Log message should warn but not include any PII
     logs = caplog.text.lower()
     assert ("not found" in logs) or ("skipping" in logs)
 
