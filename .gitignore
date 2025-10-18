@@ -1,5 +1,37 @@
-venv/
+# --- Python ---
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+
+# --- Virtual environment ---
+venv/
+.env/
+
+# --- Pytest / Coverage ---
 .pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# --- Pre-commit cache ---
+.pre-commit/
+
+# --- IDEs / Editors ---
+.vscode/
+.idea/
+
+# --- OS / System ---
 .DS_Store
-*.pyc
+Thumbs.db
+
+# --- Temporary / Data Outputs ---
+data/output/
+data/input/
+tmp/
+*.tmp
+*.log
+
+# --- AWS credentials / config ---
+.aws/
