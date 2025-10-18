@@ -5,3 +5,5 @@ moto
 bandit
 black
 flake8
+pytest-cov
+faker
