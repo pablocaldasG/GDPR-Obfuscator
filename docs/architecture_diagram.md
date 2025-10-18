@@ -10,11 +10,11 @@
 ```mermaid
 flowchart TD
     subgraph Extract
-        A[JSON Input with file_to_obfuscate + pii_field] --> B[Read CSV from S3 / Local]
+        A[JSON Input with file_to_obfuscate and pii_field] --> B[Read CSV from S3 or Local]
     end
 
     subgraph Transform
-        B --> C[Obfuscate PII fields (mask with 'XXX')]
+        B --> C[Obfuscate PII fields with XXX mask]
     end
 
     subgraph Load
@@ -23,7 +23,7 @@ flowchart TD
     end
 
     subgraph Main
-        A --> F[run_pipeline(json_input)]
+        A --> F[run_pipeline function]
         F --> B
         F --> C
         F --> D
