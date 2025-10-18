@@ -137,8 +137,8 @@ if __name__ == "__main__":  # pragma: no cover
     # Example run for testing purposes
     example_json = json.dumps(
         {
-            "file_to_obfuscate": "s3://gdpr-obfuscator-pablo-caldas/sample_input.csv",
-            "pii_field": ["email", "phone"],
+            "file_to_obfuscate": "s3://gdpr-obfuscator-pablo-caldas/sample_data.csv",
+            "pii_field": ["email", "name"],
         }
     )
     run_pipeline(example_json)
