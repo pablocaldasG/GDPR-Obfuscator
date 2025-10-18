@@ -1,97 +1,163 @@
 # Design Document – GDPR Obfuscator
 
 ## 1. Purpose
-This document describes the technical design and approach for implementing the GDPR Obfuscator project.  
-It builds upon the Discovery phase and outlines architecture, components, and technical choices.
+This document defines the technical design and rationale behind the GDPR Obfuscator project.  
+It builds upon the Discovery phase and explains the architecture, design choices, and implementation approach used to achieve compliance, testability, and maintainability.
 
 ---
 
 ## 2. High-Level Architecture
-- **Input**: CSV file stored in S3.  
-- **Process**: Python library reads file → identifies specified PII fields → obfuscates them → produces anonymised bytestream.  
-- **Output**: Byte stream compatible with `boto3` S3 PutObject, ready to be saved back to S3.  
+The GDPR Obfuscator is structured around a lightweight, modular pipeline:
 
-### Diagram (to add later)
+1. **Input** – A CSV file located in AWS S3 or on a local path (for testing).  
+2. **Process** – The system reads the file, identifies PII fields, and performs irreversible obfuscation.  
+3. **Output** – A bytestream containing the anonymised data, suitable for S3 upload using `boto3`.
+
+### Key Components
+- **S3 Handler** – Manages secure download and upload of files from/to S3.
+- **Obfuscator** – Performs field-level anonymisation.
+- **File Writer** – Produces the output bytestream and manages naming/versioning.
+- **Data Generator (Testing)** – Creates synthetic datasets for automated tests.
+- **Main Script** – Entry point that orchestrates the process.
+
+A diagram illustrating this data flow will be added to `docs/architecture_diagrams/`.
 
 ---
 
-## 3. Approach
-- **Language**: Python 3.x  
-- **Library**: `boto3` for S3 interactions.  
-- **Obfuscation strategy**:  
-  - MVP: Replace sensitive fields with masked strings (`XXXX`, hashed values, or UUIDs).  
-  - Extension: Configurable obfuscation methods (masking, hashing, pseudonymisation).  
+## 3. Design Approach
 
-- **Error handling**:  
-  - Log and skip invalid fields (do not crash pipeline).  
-  - Ensure bytestream always returned, even if partial.  
+### Language & Libraries
+- **Python 3.11**
+- **pandas** for CSV manipulation and memory-safe DataFrame operations.
+- **boto3** for AWS S3 interactions.
+- **pytest**, **moto**, and **mock** for testing and mocking AWS services.
 
-- **Testing**:  
-  - Unit tests with `pytest`.  
-  - Mock AWS S3 using `moto`.  
-  - Local test datasets with dummy data.  
+### Data Handling
+- Files are processed using **DataFrame copies** to ensure the original dataset remains unaltered.  
+- This approach provides auditability and allows test comparisons between raw and obfuscated data.
+
+### Obfuscation Strategy
+- **Method:** Masking PII fields with `'***'`.  
+- **Rationale:**  
+  - Fully irreversible (meets GDPR anonymisation standards).  
+  - Readable and suitable for analytical use cases.  
+  - Avoids unnecessarily long hashed strings.  
+- Future versions may include hashing, pseudonymisation, or configurable field-level strategies.
+
+### File Naming Convention
+Output files follow the format:  
+```bash
+{prefix}/{base_name}obf_fields-{fields_part}{timestamp}.csv
+```
+This ensures:
+- **Traceability** – timestamp and field indicators support audit logging.  
+- **Safety** – prevents overwriting existing files.  
+- **Compliance** – facilitates version tracking for GDPR audits.
 
 ---
 
 ## 4. Non-Functional Requirements
-- **Performance**: ≤1MB files processed in <1 min.  
-- **Security**:  
-  - No credentials in code (use AWS IAM roles/env vars).  
-  - `.gitignore` excludes `.env`, `.aws`, credentials, cache.  
-- **Compliance**: PEP-8 style, type hints, docstrings.  
-- **Deployment**: Must fit Lambda size limits (<250MB incl. deps).  
+
+| Category | Requirement |
+|-----------|--------------|
+| **Performance** | Process ≤1 MB CSV in < 1 minute. |
+| **Security** | No hardcoded credentials; use IAM roles or environment variables. |
+| **Code Quality** | Compliant with PEP 8, includes docstrings and type hints. |
+| **Deployment** | Package size < 250 MB to fit within AWS Lambda limits. |
 
 ---
 
-## 5. Data Flow (Detailed)
-1. Receive JSON input with:  
-   - S3 file location  
-   - Fields to obfuscate  
-
-2. Fetch file from S3 using `boto3`.  
-
-3. Process CSV in memory with `pandas` or Python `csv` module.  
-
-4. Obfuscate sensitive fields.  
-
-5. Return anonymised file as bytestream.  
-
-6. Calling service (Step Functions/Airflow/etc.) handles saving to destination.  
+## 5. Security Principles
+- **Least privilege:** IAM roles restricted to read/write required buckets only.  
+- **No credential storage:** `.gitignore` excludes `.env`, `.aws`, credentials, and cache files.  
+- **No PII logs:** Obfuscated data only is logged.  
+- **Code scanning:** Automated via Bandit in pre-commit hooks.
 
 ---
 
-## 6. User Stories → Tasks Mapping
-### US1 – Provide S3 path + fields → obfuscate CSV
-- Task: Implement JSON input parser.  
-- Task: Fetch CSV from S3.  
-- Task: Obfuscate specified fields.  
+## 6. Testing & CI/CD
 
-### US2 – Return anonymised bytestream
-- Task: Implement CSV → byte conversion.  
-- Task: Validate output compatible with `boto3 PutObject`.  
+### Test-Driven Development
+All modules were developed using **TDD**, ensuring that functionality is defined and verified through tests before implementation.
 
-### US3 – Handle invalid/missing fields gracefully
-- Task: Add error handling & logging.  
-- Task: Unit tests for edge cases.  
+**Testing tools:**
+- `pytest` for unit and integration tests.
+- `moto` and `mock` to emulate AWS services (S3) locally.
+- Synthetic CSV datasets generated for reproducibility.
 
+### Continuous Integration (CI)
+A **GitHub Actions** workflow automates validation across branches (`main`, `feature/`):
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches: [ main, feature, 'feature/**' ]
+  pull_request:
+    branches: [ main, feature, 'feature/**' ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install the dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest-cov
+
+      - name: Ensure pre-commit is installed
+        run: |
+          python -m pip install pre-commit
+          pre-commit --version
+
+      - name: Run pre-commit hooks
+        run: pre-commit run --all-files
+
+      - name: Run tests with coverage
+        run: |
+          export PYTHONPATH=$PYTHONPATH:$(pwd)
+          pytest --cov=src --cov-report=xml --cov-report=term
+```
+### Pre-Commit Hooks
+
+- Black – Enforces consistent code formatting.
+- Flake8 – Lints for style and syntax compliance.
+- Bandit – Scans for security vulnerabilities.
 ---
+## 7. Data Flow
 
-## 7. Risks & Mitigations
-- **Large files** (>1MB): out of scope for MVP.  
-- **Obfuscation reversibility**: ensure chosen method is non-reversible.  
-- **AWS costs**: use mocks + free tier.  
+- Input JSON specifies:
 
----
+  - S3 location (or local path)
+  - Fields to obfuscate
 
-## 8. Open Decisions
-- Obfuscation method: Masking (`XXXX`) vs Hashing vs UUID.  
-- File naming convention for outputs (`_obfuscated` suffix?).  
-- Logging format/level.  
+- The S3 handler retrieves the CSV file.
+- The obfuscator processes the DataFrame, masking PII fields.
+- The file writer creates a timestamped, obfuscated CSV.
+- The anonymised data is returned as a bytestream.
+- The orchestrator (e.g., Step Functions or Lambda) uploads the result back to S3.
 
----
+## 8. Risks & Mitigations
+| Risk                       | Mitigation                                                  |
+| -------------------------- | ----------------------------------------------------------- |
+| Large input files (> 1 MB) | Limit scope for MVP; future streaming-based implementation. |
+| Reversible obfuscation     | Masking ensures irreversibility.                            |
+| AWS costs                  | Use `moto` mocks and AWS free tier.                         |
+| Code or style drift        | Pre-commit hooks enforce static checks.                     |
 
-## 9. Next Steps
-- Finalise obfuscation method with stakeholders.  
-- Define directory structure in repo.  
-- Start implementation branch `feature/obfuscator-core`.  
+## 9. Open Decisions
 
+- Extend support for JSON/Parquet formats in next iteration.
+- Evaluate more complex anonymisation options (tokenisation, pseudonymisation).
+- Refine logging and monitoring (structured JSON logs).
