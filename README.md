@@ -1,115 +1,181 @@
 # GDPR Obfuscator Tool
 
-Work in Progress – This repository contains a Python-based obfuscation tool designed to anonymise Personally Identifiable Information (PII) in datasets, ensuring compliance with GDPR requirements.
+A Python-based ETL tool designed to anonymise Personally Identifiable Information (PII) in datasets stored on AWS S3 or locally, ensuring compliance with GDPR requirements.
+
+This project was developed as part of the Tech Returners Skills Bootcamp in Data Engineering by Pablo Caldas.
 
 ## Project Overview
-The purpose of this project is to provide a lightweight, modular library that can:
-- Read input data (CSV at MVP stage, later JSON/Parquet).
-- Detect and obfuscate fields containing sensitive data.
-- Return an anonymised copy of the dataset, ready for further processing in an AWS-based data pipeline.
+The GDPR Obfuscator acts as a modular data processing pipeline:
 
-This project was developed as part of a **Tech Returners freelance opportunity** and aims to demonstrate skills in:
-- **Python development** (PEP-8, testing, documentation).
-- **Data engineering practices** (AWS S3, boto3).
-- **Software delivery** (MVP, CI/CD, version control).
+- Extract – Reads CSV data from AWS S3 or local storage.
+- Transform – Obfuscates sensitive fields (email, phone, etc.) using configurable rules.
+- Load – Writes the anonymised file back to S3 or to a local destination.
+
+The tool is lightweight, modular, and suitable for deployment on AWS Lambda or other cloud-based environments.
 
 ---
 
 ## Features (MVP)
-- Input: CSV file stored in AWS S3.
-- Input config: JSON string with S3 path and fields to obfuscate.
-- Output: Bytestream with the same structure as input, but with obfuscated fields.
-- Compatible with `boto3` and AWS Lambda memory limits.
-- Unit-tested and security-reviewed (basic checks).
-
----
-
-## Possible Extensions
-- Support for JSON and Parquet input/output formats.
-- Configurable obfuscation methods (masking, hashing, pseudonymisation).
-- CLI interface for demonstration purposes.
-- Integration with AWS Step Functions / EventBridge.
+- Processes CSV files up to 1MB in less than one minute.
+- Accepts JSON configuration specifying file location and PII fields.
+- Reads/writes data from AWS S3 or local directories.
+- Designed for AWS Lambda compatibility.
+- Fully unit-tested, PEP8 compliant, and security-audited using flake8, black, and bandit.
+- Integrated CI/CD pipeline for automated testing and code quality validation.
 
 ---
 
 ## Repository Structure
 ```bash
 gdpr-obfuscator/
+├── data/
+│   ├── input/                     # Example input files
+│   └── output/                    # Obfuscated output files
+├── docs/
+│   ├── architecture_diagrams/     # Visual architecture and data flow
+│   ├── design.md                  # Technical design and implementation details
+│   ├── discovery.md               # Problem definition and project context
+│   ├── performance.md             # Performance metrics and benchmarks
+│   ├── usage.md                   # Installation, setup, and usage guide
 ├── src/
-│   └── obfuscator/       # Main Python package
-│       ├── __init__.py
-│       └── core.py
-├── tests/                # Unit tests
-│   └── test_core.py
-├── data/                 # Sample data (synthetic, non-PII)
-│   └── sample.csv
-├── docs/                 # Documentation
-│   ├── discovery.md
-│   └── design.md
-├── requirements.txt      # Dependencies
+│   ├── main.py                    # Main pipeline entry point
+│   └── utils/
+│       ├── data_generator.py      # Generates synthetic CSVs for testing
+│       ├── file_writer.py         # Handles output writing to local or S3
+│       ├── obfuscator.py          # Obfuscation logic
+│       ├── s3_handler.py          # AWS S3 interaction (read/write)
+│       └── __init__.py
+├── tests/
+│   ├── test_main.py
+│   ├── test_obfuscator.py
+│   ├── test_file_writer.py
+│   ├── test_data_generator.py
+│   ├── test_s3_handler.py
+│   └── test_sample.py
+├── requirements.txt
+├── .pre-commit-config.yaml
+├── .github/workflows/ci.yml
 ├── .gitignore
-└── README.md
+├── README.md
+└── LICENSE
 ```
 ---
-## Getting Started
+## Installation
 ### Prerequisites
 
 - Python 3.10+
-- AWS account (for S3 testing) or local mocks
+- AWS credentials configured locally via aws configure
 - pip for package management
 
 ---
-### Installation
+### Setup
 
 Clone the repository and install dependencies:
 ```bash
 git clone https://github.com/<your-username>/gdpr-obfuscator.git
 cd gdpr-obfuscator
 pip install -r requirements.txt
+
 ```
 
 ---
-### Usage (MVP Example)
+## Usage 
+Example invocation of the main pipeline:
 ```bash
-from obfuscator.core import obfuscate_csv
+import json
+from src.main import run_pipeline
 
-config = {
-    "s3_path": "s3://your-bucket/input.csv",
-    "fields": ["name", "email"]
-}
+example_json = json.dumps({
+    "file_to_obfuscate": "s3://gdpr-obfuscator-pablo-caldas/sample_input_1Mb.csv",
+    "pii_field": ["email", "phone"]
+})
 
-output = obfuscate_csv(config)
-# 'output' now contains a bytestream with obfuscated sensitive fields
+run_pipeline(example_json)
 
+```
+The pipeline performs the following steps:
+
+- Reads the file from AWS S3 or local storage.
+- Obfuscates all specified PII fields.
+- Writes the anonymised file to S3 or data/output/.
+
+For local testing, you can execute the main script directly:
+```bash
+python src/main.py
 ```
 
 ---
 ## Testing
 
-Tests are written using pytest. To run all tests:
+Unit tests are implemented using pytest.
+
+Run tests with coverage:
 ```bash
-pytest tests/
+pytest --cov=src --cov-report=term-missing
+
 ```
+Generate an HTML report:
+```bash
+pytest --cov=src --cov-report=html
+```
+
+## CI/CD Pipelone
+
+A GitHub Actions workflow is configured in .github/workflows/ci.yml.
+It runs automatically on every push or pull request to the repository.
+
+The pipeline performs the following steps:
+
+- Install dependencies.
+- Run Black for code formatting.
+- Run Flake8 for PEP8 compliance.
+- Run Bandit for security scanning.
+- Execute Pytest for unit tests and coverage.
+
+## Pre-commit Hooks
+
+Pre-commit hooks ensure that code quality checks run before each commit.
+Configured in .pre-commit-config.yaml to run:
+
+- black – automatic code formatting
+- flake8 – style and syntax validation
+- bandit – security audit
+
+Install and activate locally with:
+```bash
+pre-commit install
+```
+Run manually across all files with:
+```bash
+pre-commit run --all-files
+
+```
+
 ## Documentation
+Full documentation is included in the docs/ directory:
+| Document                 | Description                                      |
+| ------------------------ | ------------------------------------------------ |
+| `discovery.md`           | Problem statement, assumptions, and objectives.  |
+| `design.md`              | Technical architecture, modules, and data flow.  |
+| `usage.md`               | Installation, configuration, and usage examples. |
+| `performance.md`         | Runtime performance and file size testing.       |
+| `architecture_diagrams/` | System architecture and data flow diagrams.      |
 
-- Discovery – problem understanding, user stories, requirements.
 
-- Design  – technical approach, MVP design, extensions.
+## Future Extensions
 
-## CI/CD
+- Add support for JSON and Parquet file formats.
+- Implement configurable obfuscation strategies (masking, hashing, pseudonymisation).
+- Develop a CLI interface for command-line invocation.
+- Integrate with AWS Step Functions, EventBridge, or Airflow.
+- Add parallelised obfuscation for larger datasets.
 
-CI/CD will be integrated later using GitHub Actions for:
 
-Unit testing
-
-Linting (PEP-8)
-
-Security checks
+## Author
+Developed by Pablo Caldas
+Tech Returners – Skills Bootcamp in Data Engineering
+2025
 
 ## License
 
-This project is released under the MIT License.
-
-## Author
-
-Developed by Pablo Caldas as part of the Tech Returners freelance opportunity.
+This project is licensed under the MIT License (2025) – free for use, modification, and distribution with attribution.
