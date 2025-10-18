@@ -1,13 +1,22 @@
 # GDPR Obfuscator – Architecture Diagram
 
-> Note: This diagram uses Mermaid syntax. To preview locally in VS Code,
-> install a Mermaid-compatible Markdown extension such as:
-> - Markdown Preview Enhanced
-> - Markdown Preview Mermaid Support
-> 
+> Note: This diagram uses Mermaid syntax.  
+> To preview locally in VS Code, install one of:
+> - **Markdown Preview Enhanced**
+> - **Markdown Preview Mermaid Support**  
+>
 > On GitHub, Mermaid diagrams render automatically in `.md` files.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": { 
+    "primaryColor": "#f5f5f5", 
+    "primaryTextColor": "#222222", 
+    "lineColor": "#444444",
+    "fontSize": "14px",
+    "edgeWidth": 2,
+    "tertiaryColor": "#e0e0e0"
+}}}%%
+
 flowchart TD
     subgraph Extract
         A[JSON Input with file_to_obfuscate and pii_field] --> B[Read CSV from S3 or Local]
@@ -30,7 +39,7 @@ flowchart TD
         F --> E
     end
 
-    style Extract fill:#f9f,stroke:#333,stroke-width:1px
-    style Transform fill:#ff9,stroke:#333,stroke-width:1px
-    style Load fill:#9f9,stroke:#333,stroke-width:1px
-    style Main fill:#ccf,stroke:#333,stroke-width:1px
+    style Extract fill:#f5f5f5,stroke:#444444,stroke-width:2px
+    style Transform fill:#f5f5f5,stroke:#444444,stroke-width:2px
+    style Load fill:#f5f5f5,stroke:#444444,stroke-width:2px
+    style Main fill:#f5f5f5,stroke:#444444,stroke-width:2px
