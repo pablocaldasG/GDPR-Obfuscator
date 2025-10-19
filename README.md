@@ -1,5 +1,10 @@
 # GDPR Obfuscator Tool
 
+![Python](https://img.shields.io/badge/python-3.10-blue)
+![Tests](https://img.shields.io/badge/tests-passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-100%25-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
+
 A Python-based ETL tool designed to anonymise Personally Identifiable Information (PII) in datasets stored on AWS S3 or locally, ensuring compliance with GDPR requirements.
 
 This project was developed as part of the Tech Returners Skills Bootcamp in Data Engineering by Pablo Caldas.
@@ -32,6 +37,7 @@ gdpr-obfuscator/
 │   ├── input/                     # Example input files
 │   └── output/                    # Obfuscated output files
 ├── docs/
+│   ├── api_reference/             # Functions parameters and usage examples
 │   ├── architecture_diagrams/     # Visual architecture and data flow
 │   ├── design.md                  # Technical design and implementation details
 │   ├── discovery.md               # Problem definition and project context
@@ -160,6 +166,9 @@ Full documentation is included in the docs/ directory:
 | `usage.md`               | Installation, configuration, and usage examples. |
 | `performance.md`         | Runtime performance and file size testing.       |
 | `architecture_diagrams/` | System architecture and data flow diagrams.      |
+| `api_reference/`         | Functions parameters and usage examples.         |
+
+
 
 
 ## Future Extensions

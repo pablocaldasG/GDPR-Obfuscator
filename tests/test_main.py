@@ -7,6 +7,7 @@ Covers S3 and local scenarios, including success, failure, and edge cases.
 import json
 import pandas as pd
 import pytest
+import logging
 from unittest.mock import patch
 from src.main import run_pipeline, build_output_key
 
@@ -51,7 +52,7 @@ def sample_json_local(tmp_path, sample_dataframe):
 def test_run_pipeline_s3_success(sample_json_s3, sample_dataframe):
     """Pipeline runs successfully when reading and writing from S3."""
     mock_bucket = "test-bucket"
-    mock_key = "sample_input.csv.csv"
+    mock_key = "sample_input.csv"
 
     with patch(
         "src.main.read_csv_from_s3",
@@ -86,7 +87,7 @@ def test_run_pipeline_empty_dataframe(sample_json_s3):
     """Pipeline stops gracefully if DataFrame is empty."""
     empty_df = pd.DataFrame()
     mock_bucket = "test-bucket"
-    mock_key = "sample_input.csv.csv"
+    mock_key = "sample_input.csv"
 
     with patch(
         "src.main.read_csv_from_s3",
@@ -100,7 +101,7 @@ def test_run_pipeline_empty_dataframe(sample_json_s3):
 def test_run_pipeline_none_dataframe(sample_json_s3):
     """Pipeline returns False if extractor returns None instead of a DataFrame."""
     mock_bucket = "test-bucket"
-    mock_key = "sample_input.csv.csv"
+    mock_key = "sample_input.csv"
 
     with patch(
         "src.main.read_csv_from_s3",
@@ -188,3 +189,43 @@ def test_build_output_key_simple_file():
     assert "_obf_fields-phone" in output_key
     assert output_key.endswith(".csv")
     assert "/" not in output_key
+
+
+def test_run_pipeline_no_fields_provided_triggers_warning(caplog, sample_dataframe):
+    """When no PII fields are provided (neither in JSON nor from S3),
+    the pipeline logs a warning and still writes a copy."""
+    mock_bucket = "test-bucket"
+    mock_key = "sample_input.csv"
+
+    # JSON without pii_field key
+    json_input_no_fields = json.dumps(
+        {"file_to_obfuscate": "s3://test-bucket/sample_input.csv"}
+    )
+
+    with patch(
+        "src.main.read_csv_from_s3",
+        return_value=(sample_dataframe, [], mock_bucket, mock_key),
+    ), patch(
+        "src.main.obfuscate_fields", return_value=sample_dataframe
+    ) as mock_obf, patch(
+        "src.main.write_csv_to_destination", return_value=True
+    ) as mock_write:
+        caplog.set_level(logging.WARNING)
+        result = run_pipeline(json_input_no_fields)
+
+        # Pipeline should succeed (writes a copy) even if no fields
+        assert result is True
+
+        # obfuscate_fields should still be called (the function handles empty fields)
+        mock_obf.assert_called_once_with(sample_dataframe, [])
+
+        # write should have been called
+        mock_write.assert_called_once()
+
+        # The warning about no PII fields should be present in logs
+        warnings = [r.message for r in caplog.records if r.levelno == logging.WARNING]
+        assert any(
+            "No PII fields provided; nothing to obfuscate. Still writing copy."
+            in str(w)
+            for w in warnings
+        )
